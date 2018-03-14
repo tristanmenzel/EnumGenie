@@ -9,10 +9,16 @@ namespace EnumGenie.TypeScript
     public class EnumDescriptorWriter : IEnumWriter
     {
         private readonly bool _const;
+        private readonly bool _prefixInterface;
+
+        public EnumDescriptorWriter() : this(null)
+        {
+        }
 
         public EnumDescriptorWriter(EnumDescriptorWriterConfig descriptorConfig)
         {
             _const = descriptorConfig?.Const ?? false;
+            _prefixInterface = descriptorConfig?.UseInterfacePrefix ?? true;
         }
 
         public void WriteTo(Stream stream, EnumDefinition enumDefinition)
@@ -23,28 +29,23 @@ namespace EnumGenie.TypeScript
 
             var varOrConst = _const ? "const" : "var";
 
+            var interfacePrefix = _prefixInterface ? "I" : "";
+            var descriptorInterface = $"{interfacePrefix}{enumDefinition.Name}Descriptor";
+
             var writer = new StreamWriter(stream);
-            writer.WriteLine($"export interface I{enumDefinition.Name}Descriptor {{ value: {enumDefinition.Name}; name: string; description: string; }}");
-            writer.WriteLine($"export {varOrConst} all{enumDefinition.Name}: I{enumDefinition.Name}Descriptor[] = [");
-
-            writer.Write(string.Join($",{Environment.NewLine}", membersExceptFlagsDefault.Select(m => $"    {Descriptor(enumDefinition, m)}")));
+            writer.WriteLine(
+                $"export interface {descriptorInterface} {{ value: {enumDefinition.Name}; name: string; description: string; }}");
+            writer.WriteLine($"export {varOrConst} all{enumDefinition.Name}: {descriptorInterface}[] = [");
+            writer.Write(string.Join($",{Environment.NewLine}",
+                membersExceptFlagsDefault.Select(m => $" {enumDefinition.Name}.{m.Name}")));
             writer.WriteLine();
 
-            writer.WriteLine("];");
+            writer.WriteLine(
+                $"].map(value => ({{value, name: {enumDefinition.Name}[value], description: {enumDefinition.Name}Desc[value]}}));");
 
-            writer.WriteLine();
-
-            writer.WriteLine($"export function get{enumDefinition.Name}Descriptor(value: {enumDefinition.Name}) {{");
-            writer.WriteLine("    switch (value) {");
-
-            foreach (var member in membersExceptFlagsDefault)
-            {
-                writer.WriteLine($"        case {enumDefinition.Name}.{member.Name}:");
-                writer.WriteLine($"            return {Descriptor(enumDefinition, member)};");
-            }
-
-            writer.WriteLine("    }");
-            writer.WriteLine("}");
+            writer.WriteLine(
+                $"export const get{enumDefinition.Name}Descriptor = (value: {enumDefinition.Name}): {descriptorInterface} => ");
+            writer.WriteLine($" all{enumDefinition.Name}.filter(d => d.value === value)[0];");
             writer.Flush();
         }
 
@@ -52,5 +53,8 @@ namespace EnumGenie.TypeScript
         {
             return $"{{ value: {enumDefinition.Name}.{m.Name}, name: `{m.Name}`, description: `{m.Description}` }}";
         }
+
+
+        public Type[] Dependencies => new[] {typeof(EnumDeclarationWriter), typeof(EnumDescriptionDictionaryWriter)};
     }
 }

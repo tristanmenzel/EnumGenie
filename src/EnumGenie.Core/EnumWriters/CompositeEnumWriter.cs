@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -19,5 +20,7 @@ namespace EnumGenie.Writers
                 enumWriter.WriteTo(stream, enumDefinition);
             }
         }
+
+        public Type[] Dependencies => Array.Empty<Type>();
     }
 }

@@ -9,6 +9,15 @@ namespace EnumGenie.TypeScript
 
         public void AddTypeScriptWriter(IEnumWriter writer)
         {
+            foreach (var dependency in writer.Dependencies)
+            {
+                if (_writers.All(w => w.GetType() != dependency))
+                {
+                    if (Activator.CreateInstance(dependency) is IEnumWriter depWriter)
+                        _writers.Add(depWriter);
+                }
+            }
+
             _writers.Add(writer);
         }
 

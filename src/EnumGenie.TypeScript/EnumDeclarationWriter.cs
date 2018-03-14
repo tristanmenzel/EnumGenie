@@ -9,6 +9,10 @@ namespace EnumGenie.TypeScript
     {
         private readonly bool _const;
 
+        public EnumDeclarationWriter() : this(null)
+        {
+        }
+
         public EnumDeclarationWriter(EnumDeclarationWriterConfig config)
         {
             _const = config?.Const ?? false;
@@ -18,6 +22,7 @@ namespace EnumGenie.TypeScript
         {
             var writer = new StreamWriter(stream);
             var writeConst = _const ? "const " : string.Empty;
+
             writer.WriteLine($"export {writeConst}enum {enumDefinition.Name} {{");
 
             writer.Write(string.Join($",{Environment.NewLine}", enumDefinition.Members.Select(MemberValueAssignment)));
@@ -26,6 +31,8 @@ namespace EnumGenie.TypeScript
             writer.WriteLine("}");
             writer.Flush();
         }
+
+        public Type[] Dependencies => Array.Empty<Type>();
 
         private static string MemberValueAssignment(EnumMemberDefinition member)
         {
